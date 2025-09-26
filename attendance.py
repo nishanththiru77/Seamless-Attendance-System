@@ -17,11 +17,6 @@ import takeImage
 import trainImage
 import automaticAttedance
 
-# engine = pyttsx3.init()
-# engine.say("Welcome!")
-# engine.say("Please browse through your options..")
-# engine.runAndWait()
-
 
 def text_to_speech(user_text):
     engine = pyttsx3.init()
@@ -29,13 +24,44 @@ def text_to_speech(user_text):
     engine.runAndWait()
 
 
+# Theme constants
+BG_DARK = "#1c1c1c"
+BG_PANEL = "#2b2b2b"
+FG_PRIMARY = "#ffde59"  # warm yellow
+BTN_BG = "#2e86de"
+BTN_BG_HOVER = "#1b4f72"
+BTN_FG = "#ffffff"
+
+
+def style_button(btn, bg=BTN_BG, hover_bg=BTN_BG_HOVER, fg=BTN_FG):
+    btn.configure(
+        bg=bg,
+        fg=fg,
+        activebackground=hover_bg,
+        activeforeground=fg,
+        bd=0,
+        relief=RIDGE,
+        highlightthickness=0,
+        cursor="hand2",
+    )
+
+    def on_enter(_):
+        btn.configure(bg=hover_bg)
+
+    def on_leave(_):
+        btn.configure(bg=bg)
+
+    btn.bind("<Enter>", on_enter)
+    btn.bind("<Leave>", on_leave)
+
+
 haarcasecade_path = "haarcascade_frontalface_default.xml"
 trainimagelabel_path = (
     "./TrainingImageLabel/Trainner.yml"
 )
-trainimage_path = "/TrainingImage"
-if not os.path.exists(trainimage_path):
-    os.makedirs(trainimage_path)
+# FIX: Use relative project path (previously was "/TrainingImage" pointing to drive root)
+trainimage_path = "./TrainingImage"
+os.makedirs(trainimage_path, exist_ok=True)
 
 studentdetail_path = (
     "./StudentDetails/studentdetails.csv"
@@ -47,41 +73,84 @@ window.title("Face Recognizer")
 window.geometry("1280x720")
 dialog_title = "QUIT"
 dialog_text = "Are you sure want to close?"
-window.configure(background="#1c1c1c")  # Dark theme
+window.configure(background=BG_DARK)
+window.resizable(True, True)
+
+# Header bar
+logo = Image.open("UI_Image/0001.png")
+logo = logo.resize((50, 47), Image.LANCZOS)
+logo1 = ImageTk.PhotoImage(logo)
+
+titl = tk.Label(window, bg=BG_DARK, relief=RIDGE, bd=10, font=("Verdana", 30, "bold"))
+titl.pack(fill=X)
+
+l1 = tk.Label(window, image=logo1, bg=BG_DARK)
+l1.place(x=470, y=10)
+
+header = tk.Label(
+    window, text="CLASS VISION", bg=BG_DARK, fg=FG_PRIMARY, font=("Verdana", 27, "bold"),
+)
+header.place(x=525, y=12)
+
+welcome = tk.Label(
+    window,
+    text="Welcome to CLASS VISION",
+    bg=BG_DARK,
+    fg=FG_PRIMARY,
+    bd=10,
+    font=("Verdana", 35, "bold"),
+)
+welcome.pack()
+
+# Illustrations
+ri = Image.open("UI_Image/register.png")
+r = ImageTk.PhotoImage(ri)
+label1 = Label(window, image=r, bg=BG_DARK)
+label1.image = r
+label1.place(x=100, y=270)
+
+ai = Image.open("UI_Image/attendance.png")
+a = ImageTk.PhotoImage(ai)
+label2 = Label(window, image=a, bg=BG_DARK)
+label2.image = a
+label2.place(x=980, y=270)
+
+vi = Image.open("UI_Image/verifyy.png")
+v = ImageTk.PhotoImage(vi)
+label3 = Label(window, image=v, bg=BG_DARK)
+label3.image = v
+label3.place(x=600, y=270)
 
 
-# to destroy screen
-def del_sc1():
-    sc1.destroy()
-
-
-# error message for name and no
 def err_screen():
-    global sc1
+    # error message for name and no
+    def del_sc1():
+        sc1.destroy()
+
     sc1 = tk.Tk()
     sc1.geometry("400x110")
     sc1.iconbitmap("AMS.ico")
     sc1.title("Warning!!")
-    sc1.configure(background="#1c1c1c")
+    sc1.configure(background=BG_DARK)
     sc1.resizable(0, 0)
     tk.Label(
         sc1,
         text="Enrollment & Name required!!!",
-        fg="yellow",
-        bg="#1c1c1c",  # Dark background for the error window
+        fg=FG_PRIMARY,
+        bg=BG_DARK,
         font=("Verdana", 16, "bold"),
     ).pack()
-    tk.Button(
+    ok_btn = tk.Button(
         sc1,
         text="OK",
         command=del_sc1,
-        fg="yellow",
-        bg="#333333",  # Darker button color
         width=9,
         height=1,
-        activebackground="red",
         font=("Verdana", 16, "bold"),
-    ).place(x=110, y=50)
+    )
+    style_button(ok_btn)
+    ok_btn.place(x=110, y=50)
+
 
 def testVal(inStr, acttyp):
     if acttyp == "1":  # insert
@@ -90,150 +159,110 @@ def testVal(inStr, acttyp):
     return True
 
 
-logo = Image.open("UI_Image/0001.png")
-logo = logo.resize((50, 47), Image.LANCZOS)
-logo1 = ImageTk.PhotoImage(logo)
-titl = tk.Label(window, bg="#1c1c1c", relief=RIDGE, bd=10, font=("Verdana", 30, "bold"))
-titl.pack(fill=X)
-l1 = tk.Label(window, image=logo1, bg="#1c1c1c",)
-l1.place(x=470, y=10)
-
-
-titl = tk.Label(
-    window, text="CLASS VISION", bg="#1c1c1c", fg="yellow", font=("Verdana", 27, "bold"),
-)
-titl.place(x=525, y=12)
-
-a = tk.Label(
-    window,
-    text="Welcome to CLASS VISION",
-    bg="#1c1c1c",  # Dark background for the main text
-    fg="yellow",  # Bright yellow text color
-    bd=10,
-    font=("Verdana", 35, "bold"),
-)
-a.pack()
-
-
-ri = Image.open("UI_Image/register.png")
-r = ImageTk.PhotoImage(ri)
-label1 = Label(window, image=r)
-label1.image = r
-label1.place(x=100, y=270)
-
-ai = Image.open("UI_Image/attendance.png")
-a = ImageTk.PhotoImage(ai)
-label2 = Label(window, image=a)
-label2.image = a
-label2.place(x=980, y=270)
-
-vi = Image.open("UI_Image/verifyy.png")
-v = ImageTk.PhotoImage(vi)
-label3 = Label(window, image=v)
-label3.image = v
-label3.place(x=600, y=270)
-
-
 def TakeImageUI():
     ImageUI = Tk()
     ImageUI.title("Take Student Image..")
-    ImageUI.geometry("780x480")
-    ImageUI.configure(background="#1c1c1c")  # Dark background for the image window
+    ImageUI.geometry("780x520")
+    ImageUI.configure(background=BG_DARK)
     ImageUI.resizable(0, 0)
-    titl = tk.Label(ImageUI, bg="#1c1c1c", relief=RIDGE, bd=10, font=("Verdana", 30, "bold"))
-    titl.pack(fill=X)
-    # image and title
-    titl = tk.Label(
-        ImageUI, text="Register Your Face", bg="#1c1c1c", fg="green", font=("Verdana", 30, "bold"),
-    )
-    titl.place(x=270, y=12)
 
-    # heading
-    a = tk.Label(
+    titl = tk.Label(ImageUI, bg=BG_DARK, relief=RIDGE, bd=10, font=("Verdana", 30, "bold"))
+    titl.pack(fill=X)
+
+    # Title
+    heading = tk.Label(
+        ImageUI, text="Register Your Face", bg=BG_DARK, fg="#6be675", font=("Verdana", 30, "bold"),
+    )
+    heading.place(x=230, y=12)
+
+    # Subheading
+    sub = tk.Label(
         ImageUI,
         text="Enter the details",
-        bg="#1c1c1c",  # Dark background for the details label
-        fg="yellow",  # Bright yellow text color
+        bg=BG_DARK,
+        fg=FG_PRIMARY,
         bd=10,
         font=("Verdana", 24, "bold"),
     )
-    a.place(x=280, y=75)
+    sub.place(x=260, y=75)
 
-    # ER no
+    # Enrollment
     lbl1 = tk.Label(
         ImageUI,
         text="Enrollment No",
-        width=10,
+        width=12,
         height=2,
-        bg="#1c1c1c",
-        fg="yellow",
+        bg=BG_DARK,
+        fg=FG_PRIMARY,
         bd=5,
         relief=RIDGE,
         font=("Verdana", 14),
     )
-    lbl1.place(x=120, y=130)
+    lbl1.place(x=80, y=140)
     txt1 = tk.Entry(
         ImageUI,
-        width=17,
-        bd=5,
+        width=20,
+        bd=0,
         validate="key",
-        bg="#333333",  # Dark input background
-        fg="yellow",  # Bright text color for input
-        relief=RIDGE,
+        bg=BG_PANEL,
+        fg=FG_PRIMARY,
+        relief=FLAT,
         font=("Verdana", 18, "bold"),
+        insertbackground=FG_PRIMARY,
     )
-    txt1.place(x=250, y=130)
+    txt1.place(x=250, y=145, height=40)
     txt1["validatecommand"] = (txt1.register(testVal), "%P", "%d")
 
-    # name
+    # Name
     lbl2 = tk.Label(
         ImageUI,
         text="Name",
-        width=10,
+        width=12,
         height=2,
-        bg="#1c1c1c",
-        fg="yellow",
+        bg=BG_DARK,
+        fg=FG_PRIMARY,
         bd=5,
         relief=RIDGE,
         font=("Verdana", 14),
     )
-    lbl2.place(x=120, y=200)
+    lbl2.place(x=80, y=200)
     txt2 = tk.Entry(
         ImageUI,
-        width=17,
-        bd=5,
-        bg="#333333",  # Dark input background
-        fg="yellow",  # Bright text color for input
-        relief=RIDGE,
+        width=20,
+        bd=0,
+        bg=BG_PANEL,
+        fg=FG_PRIMARY,
+        relief=FLAT,
         font=("Verdana", 18, "bold"),
+        insertbackground=FG_PRIMARY,
     )
-    txt2.place(x=250, y=200)
+    txt2.place(x=250, y=205, height=40)
 
     lbl3 = tk.Label(
         ImageUI,
         text="Notification",
-        width=10,
+        width=12,
         height=2,
-        bg="#1c1c1c",
-        fg="yellow",
+        bg=BG_DARK,
+        fg=FG_PRIMARY,
         bd=5,
         relief=RIDGE,
         font=("Verdana", 14),
     )
-    lbl3.place(x=120, y=270)
+    lbl3.place(x=80, y=260)
 
     message = tk.Label(
         ImageUI,
         text="",
-        width=32,
+        width=34,
         height=2,
-        bd=5,
-        bg="#333333",  # Dark background for messages
-        fg="yellow",  # Bright text color for messages
-        relief=RIDGE,
+        bd=0,
+        bg=BG_PANEL,
+        fg=FG_PRIMARY,
+        relief=FLAT,
         font=("Verdana", 14, "bold"),
     )
-    message.place(x=250, y=270)
+    message.place(x=250, y=260)
 
     def take_image():
         l1 = txt1.get()
@@ -250,21 +279,16 @@ def TakeImageUI():
         txt1.delete(0, "end")
         txt2.delete(0, "end")
 
-    # take Image button
-    # image
     takeImg = tk.Button(
         ImageUI,
         text="Take Image",
         command=take_image,
-        bd=10,
         font=("Verdana", 18, "bold"),
-        bg="#333333",  # Dark background for the button
-        fg="yellow",  # Bright text color for the button
         height=2,
-        width=12,
-        relief=RIDGE,
+        width=14,
     )
-    takeImg.place(x=130, y=350)
+    style_button(takeImg, bg="#27ae60", hover_bg="#1e8449")
+    takeImg.place(x=100, y=350)
 
     def train_image():
         trainImage.TrainImage(
@@ -275,82 +299,72 @@ def TakeImageUI():
             text_to_speech,
         )
 
-    # train Image function call
     trainImg = tk.Button(
         ImageUI,
         text="Train Image",
         command=train_image,
-        bd=10,
         font=("Verdana", 18, "bold"),
-        bg="#333333",  # Dark background for the button
-        fg="yellow",  # Bright text color for the button
         height=2,
-        width=12,
-        relief=RIDGE,
+        width=14,
     )
-    trainImg.place(x=360, y=350)
+    style_button(trainImg)
+    trainImg.place(x=390, y=350)
 
 
-r = tk.Button(
+# Main actions
+btn_register = tk.Button(
     window,
     text="Register a new student",
     command=TakeImageUI,
-    bd=10,
-    font=("Verdana", 16),
-    bg="black",
-    fg="yellow",
+    font=("Verdana", 16, "bold"),
     height=2,
-    width=17,
+    width=20,
 )
-r.place(x=100, y=520)
+style_button(btn_register)
+btn_register.place(x=100, y=520)
 
 
 def automatic_attedance():
     automaticAttedance.subjectChoose(text_to_speech)
 
 
-r = tk.Button(
+btn_attend = tk.Button(
     window,
     text="Take Attendance",
     command=automatic_attedance,
-    bd=10,
-    font=("Verdana", 16),
-    bg="black",
-    fg="yellow",
+    font=("Verdana", 16, "bold"),
     height=2,
-    width=17,
+    width=20,
 )
-r.place(x=600, y=520)
+style_button(btn_attend)
+btn_attend.place(x=600, y=520)
 
 
 def view_attendance():
     show_attendance.subjectchoose(text_to_speech)
 
 
-r = tk.Button(
+btn_view = tk.Button(
     window,
     text="View Attendance",
     command=view_attendance,
-    bd=10,
-    font=("Verdana", 16),
-    bg="black",
-    fg="yellow",
+    font=("Verdana", 16, "bold"),
     height=2,
-    width=17,
+    width=20,
 )
-r.place(x=1000, y=520)
-r = tk.Button(
+style_button(btn_view)
+btn_view.place(x=1000, y=520)
+
+btn_exit = tk.Button(
     window,
     text="EXIT",
-    bd=10,
     command=quit,
-    font=("Verdana", 16),
-    bg="black",
-    fg="yellow",
+    font=("Verdana", 16, "bold"),
     height=2,
-    width=17,
+    width=20,
 )
-r.place(x=600, y=660)
+style_button(btn_exit, bg="#e74c3c", hover_bg="#922b21")
+btn_exit.place(x=600, y=660)
 
 
 window.mainloop()

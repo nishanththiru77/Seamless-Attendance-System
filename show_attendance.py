@@ -16,20 +16,25 @@ def subjectchoose(text_to_speech):
         filenames = glob(
             f"Attendance\\{Subject}\\{Subject}*.csv"
         )
+        if not filenames:
+            t = "No attendance files found for this subject yet."
+            text_to_speech(t)
+            return
         df = [pd.read_csv(f) for f in filenames]
         newdf = df[0]
         for i in range(1, len(df)):
             newdf = newdf.merge(df[i], how="outer")
         newdf.fillna(0, inplace=True)
-        newdf["Attendance"] = 0
-        for i in range(len(newdf)):
-            newdf["Attendance"].iloc[i] = str(int(round(newdf.iloc[i, 2:-1].mean() * 100)))+'%'
-            #newdf.sort_values(by=['Enrollment'],inplace=True)
+        if newdf.shape[1] <= 2:
+            newdf["Attendance"] = "0%"
+        else:
+            avg = (newdf.iloc[:, 2:].mean(axis=1) * 100).round().astype(int).astype(str) + '%'
+            newdf["Attendance"] = avg
         newdf.to_csv(f"Attendance\\{Subject}\\attendance.csv", index=False)
 
         root = tkinter.Tk()
         root.title("Attendance of "+Subject)
-        root.configure(background="black")
+        root.configure(background="#1c1c1c")
         cs = f"Attendance\\{Subject}\\attendance.csv"
         with open(cs) as file:
             reader = csv.reader(file)
@@ -40,14 +45,14 @@ def subjectchoose(text_to_speech):
                 for row in col:
 
                     label = tkinter.Label(
-                        root,
-                        width=10,
-                        height=1,
-                        fg="yellow",
-                        font=("times", 15, " bold "),
-                        bg="black",
-                        text=row,
-                        relief=tkinter.RIDGE,
+                    root,
+                    width=10,
+                    height=1,
+                    fg="#ffde59",
+                    font=("times", 15, " bold "),
+                    bg="#1c1c1c",
+                    text=row,
+                    relief=tkinter.RIDGE,
                     )
                     label.grid(row=r, column=c)
                     c += 1

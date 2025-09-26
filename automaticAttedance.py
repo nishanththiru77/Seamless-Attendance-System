@@ -13,11 +13,11 @@ import tkinter.font as font
 
 haarcasecade_path = "haarcascade_frontalface_default.xml"
 trainimagelabel_path = (
-    "TrainingImageLabel\\Trainner.yml"
+    "TrainingImageLabel/Trainner.yml"
 )
 trainimage_path = "TrainingImage"
 studentdetail_path = (
-    "StudentDetails\\studentdetails.csv"
+    "StudentDetails/studentdetails.csv"
 )
 attendance_path = "Attendance"
 # for choose subject and fill attendance
@@ -48,7 +48,9 @@ def subjectChoose(text_to_speech):
                     Notifica.place(x=20, y=250)
                     text_to_speech(e)
                 facecasCade = cv2.CascadeClassifier(haarcasecade_path)
-                df = pd.read_csv(studentdetail_path)
+                # Read student details; handle missing header gracefully
+                df_raw = pd.read_csv(studentdetail_path, header=None, names=["Enrollment", "Name"], dtype={"Enrollment": int, "Name": str})
+                df = df_raw.drop_duplicates(subset=["Enrollment"], keep="last")
                 cam = cv2.VideoCapture(0)
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 col_names = ["Enrollment", "Name"]
@@ -75,13 +77,16 @@ def subjectChoose(text_to_speech):
                             timeStamp = datetime.datetime.fromtimestamp(ts).strftime(
                                 "%H:%M:%S"
                             )
-                            aa = df.loc[df["Enrollment"] == Id]["Name"].values
+                            name_values = df.loc[df["Enrollment"] == Id]["Name"].values
+                            if len(name_values) == 0:
+                                display_name = "Unknown"
+                            else:
+                                display_name = str(name_values[0])
                             global tt
-                            tt = str(Id) + "-" + aa
-                            # En='1604501160'+str(Id)
+                            tt = f"{Id}-{display_name}"
                             attendance.loc[len(attendance)] = [
                                 Id,
-                                aa,
+                                display_name,
                             ]
                             cv2.rectangle(im, (x, y), (x + w, y + h), (0, 260, 0), 4)
                             cv2.putText(
@@ -106,12 +111,9 @@ def subjectChoose(text_to_speech):
                         break
 
                 ts = time.time()
-                print(aa)
-                # attendance["date"] = date
-                # attendance["Attendance"] = "P"
-                attendance[date] = 1
                 date = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
                 timeStamp = datetime.datetime.fromtimestamp(ts).strftime("%H:%M:%S")
+                attendance[date] = 1
                 Hour, Minute, Second = timeStamp.split(":")
                 # fileName = "Attendance/" + Subject + ".csv"
                 path = os.path.join(attendance_path, Subject)
@@ -157,7 +159,7 @@ def subjectChoose(text_to_speech):
                 root = tkinter.Tk()
                 root.title("Attendance of " + Subject)
                 root.configure(background="black")
-                cs = os.path.join(path, fileName)
+                cs = fileName
                 print(cs)
                 with open(cs, newline="") as file:
                     reader = csv.reader(file)
