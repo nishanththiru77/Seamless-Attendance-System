@@ -70,7 +70,13 @@ def subjectchoose(text_to_speech):
             t='Please enter the subject name.'
             text_to_speech(t)
             return
-    
+
+        csv_path = f"Attendance\\{Subject}\\attendance.csv"
+        if os.path.exists(csv_path):
+            # Display stored attendance report
+            display_attendance(Subject, csv_path)
+            return
+
         folder = os.path.join("Attendance", Subject)
         filenames = sorted(glob(os.path.join(folder, "*.csv")))
         # Exclude aggregated report itself
@@ -79,7 +85,7 @@ def subjectchoose(text_to_speech):
             t = "No attendance files found for this subject yet."
             text_to_speech(t)
             return
-            
+
         # Load each session, enforce consistent dtypes
         df = []
         for f in filenames:
@@ -105,10 +111,10 @@ def subjectchoose(text_to_speech):
         else:
             avg = (newdf.iloc[:, 2:].mean(axis=1) * 100).round().astype(int).astype(str) + '%'
             newdf["Attendance"] = avg
-        newdf.to_csv(f"Attendance\\{Subject}\\attendance.csv", index=False)
+        newdf.to_csv(csv_path, index=False)
 
         # Modern attendance display window
-        display_attendance(Subject, f"Attendance\\{Subject}\\attendance.csv")
+        display_attendance(Subject, csv_path)
 
     def display_attendance(subject_name, csv_path):
         """Display attendance in a modern, attractive format"""
@@ -246,8 +252,6 @@ def subjectchoose(text_to_speech):
             font=("Segoe UI", 10, "italic")
         )
         footer_text.pack(pady=15)
-
-        root.mainloop()
 
     # Modern subject selection window
     subject = Toplevel()

@@ -503,22 +503,22 @@ def TakeImageUI():
         text="📸 Capture Image",
         command=take_image,
         font=("Segoe UI", 14, "bold"),
-        height=5,
+        height=6,
         width=16,
     )
     style_button(takeImg, bg=BTN_SUCCESS, hover_bg=BTN_SUCCESS_HOVER)
-    takeImg.pack(side=LEFT, padx=10, ipady=10)
+    takeImg.pack(side=LEFT, padx=10)
 
     trainImg = tk.Button(
         button_frame,
         text="🧠 Train Model",
         command=train_image,
         font=("Segoe UI", 14, "bold"),
-        height=5,
+        height=6,
         width=16,
     )
     style_button(trainImg, bg=BTN_PRIMARY, hover_bg=BTN_PRIMARY_HOVER)
-    trainImg.pack(side=LEFT, padx=10, ipady=10)
+    trainImg.pack(side=LEFT, padx=10)
 
     # Add Mark Attendance button
     def mark_attendance():
@@ -529,11 +529,11 @@ def TakeImageUI():
         text="✅ Mark Attendance",
         command=mark_attendance,
         font=("Segoe UI", 14, "bold"),
-        height=5,
+        height=6,
         width=16,
     )
     style_button(markAttendBtn, bg=BTN_WARNING, hover_bg=BTN_WARNING_HOVER)
-    markAttendBtn.pack(side=LEFT, padx=10, ipady=10)
+    markAttendBtn.pack(side=LEFT, padx=10)
 
     # Instructions
     instructions = tk.Label(
