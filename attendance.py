@@ -6,6 +6,7 @@ def exit_application():
     window.after(200, window.quit)
 import tkinter as tk
 from tkinter import *
+from tkinter import simpledialog
 from tkinter import ttk
 import os, cv2
 import shutil
@@ -21,9 +22,11 @@ import pyttsx3
 
 # project module
 import show_attendance
-import takeImage
+import takemanually
 import trainImage
 import automaticAttedance
+import checkpoint_attendance
+import registration as takeImage
 
 
 def text_to_speech(user_text):
@@ -104,9 +107,9 @@ def create_card_frame(parent, x, y, width, height, title, icon_path=None):
     """Create a modern card-style frame (uses pack layout for reliability)"""
     # Container for spacing
     container = tk.Frame(parent, bg=BG_GRADIENT_START)
-    container.pack(side=LEFT, padx=20, pady=10)
+    container.pack(side=LEFT, padx=10, pady=10, fill=BOTH, expand=True)
 
-    # Main card frame
+    # Main card frame with fixed size
     card_frame = tk.Frame(container, bg=BG_CARD, height=height, width=width, relief=FLAT, bd=0)
     card_frame.pack()
     card_frame.pack_propagate(False)
@@ -165,7 +168,7 @@ attendance_path = "Attendance"
 # Create main window with modern styling
 window = Tk()
 window.title("CLASS VISION - Smart Attendance Management System")
-window.geometry("1400x800")
+window.geometry("1400x750")
 window.configure(background=BG_GRADIENT_START)
 window.resizable(True, True)
 
@@ -186,6 +189,7 @@ actions_menu = tk.Menu(menubar, tearoff=0)
 actions_menu.add_command(label="Register (Ctrl+R)", command=lambda: register_student())
 actions_menu.add_command(label="Take Attendance (Ctrl+A)", command=lambda: automatic_attedance())
 actions_menu.add_command(label="View Reports (Ctrl+V)", command=lambda: view_attendance())
+actions_menu.add_command(label="Past Reports (Ctrl+P)", command=lambda: past_reports.show_past_reports(text_to_speech))
 actions_menu.add_separator()
 actions_menu.add_command(label="Exit (Esc)", command=lambda: exit_application())
 menubar.add_cascade(label="Actions", menu=actions_menu)
@@ -200,11 +204,12 @@ window.config(menu=menubar)
 window.bind_all("<Control-r>", lambda e: register_student())
 window.bind_all("<Control-a>", lambda e: automatic_attedance())
 window.bind_all("<Control-v>", lambda e: view_attendance())
+window.bind_all("<Control-p>", lambda e: past_reports.show_past_reports(text_to_speech))
 window.bind_all("<Escape>", lambda e: exit_application())
 
 # Modern Header Section
-header_frame = tk.Frame(window, bg=BG_GRADIENT_START, height=120)
-header_frame.pack(fill=X, pady=20)
+header_frame = tk.Frame(window, bg=BG_GRADIENT_START, height=100)
+header_frame.pack(fill=X, pady=10)
 
 # Logo and title container
 title_container = tk.Frame(header_frame, bg=BG_PANEL, relief=FLAT, bd=0)
@@ -245,7 +250,7 @@ subtitle.pack()
 
 # Welcome message with animation effect
 welcome_frame = tk.Frame(window, bg=BG_GRADIENT_START)
-welcome_frame.pack(pady=20)
+welcome_frame.pack(pady=8)
 
 welcome_label = tk.Label(
     welcome_frame,
@@ -256,45 +261,89 @@ welcome_label = tk.Label(
 )
 welcome_label.pack()
 
-# Main content area with cards
-content_frame = tk.Frame(window, bg=BG_GRADIENT_START)
-content_frame.pack(fill=BOTH, expand=True, padx=40, pady=20)
+# Main content area with SCROLLING SUPPORT
+# Create a canvas with scrollbar for the main content
+main_outer_frame = tk.Frame(window, bg=BG_GRADIENT_START)
+main_outer_frame.pack(fill=BOTH, expand=True, padx=20, pady=10)
 
-# Create modern cards for each function
-card1, content1 = create_card_frame(content_frame, 50, 50, 350, 300, "👤 Student Registration", "UI_Image/register.png")
-card2, content2 = create_card_frame(content_frame, 450, 50, 350, 300, "📊 Take Attendance", "UI_Image/attendance.png")
-card3, content3 = create_card_frame(content_frame, 850, 50, 350, 300, "📈 View Reports", "UI_Image/verifyy.png")
+main_canvas = tk.Canvas(main_outer_frame, bg=BG_GRADIENT_START, highlightthickness=0, bd=0)
+scrollbar = ttk.Scrollbar(main_outer_frame, orient="vertical", command=main_canvas.yview)
+content_frame = tk.Frame(main_canvas, bg=BG_GRADIENT_START)
 
-# Add descriptions to cards
+content_frame.bind(
+    "<Configure>",
+    lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all"))
+)
+
+main_canvas.create_window((0, 0), window=content_frame, anchor="nw")
+main_canvas.configure(yscrollcommand=scrollbar.set)
+
+# Enable scrolling with mouse wheel
+def _on_mousewheel(event):
+    main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+main_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+main_canvas.pack(side="left", fill="both", expand=True)
+scrollbar.pack(side="right", fill="y")
+
+# Create modern cards for each function with UNIFORM SIZING (ALL IN ONE ROW)
+CARD_WIDTH = 270
+CARD_HEIGHT = 260
+
+# Container frame for cards with proper alignment - SINGLE ROW
+cards_container = tk.Frame(content_frame, bg=BG_GRADIENT_START)
+cards_container.pack(fill=BOTH, expand=True, pady=20)
+
+# All cards in one row
+cards_row = tk.Frame(cards_container, bg=BG_GRADIENT_START)
+cards_row.pack(fill=BOTH, expand=True, pady=10)
+
+card1, content1 = create_card_frame(cards_row, 50, 50, CARD_WIDTH, CARD_HEIGHT, "👤 Student Registration", "UI_Image/register.png")
+card2, content2 = create_card_frame(cards_row, 450, 50, CARD_WIDTH, CARD_HEIGHT, "📊 Take Attendance", "UI_Image/attendance.png")
+card3, content3 = create_card_frame(cards_row, 850, 50, CARD_WIDTH, CARD_HEIGHT, "📈 View Reports", "UI_Image/verifyy.png")
+card4, content4 = create_card_frame(cards_row, 50, 380, CARD_WIDTH, CARD_HEIGHT, "📅 Past Reports", "UI_Image/verifyy.png")
+
+# Add descriptions to cards with REDUCED SIZE for compact layout
 desc1 = tk.Label(
     content1,
-    text="Register new students by capturing\ntheir facial features for recognition.\nSecure and efficient enrollment process.",
+    text="Register new students by\ncapturing their facial features.\nSecure enrollment process.",
     bg=BG_CARD,
     fg=FG_SECONDARY,
-    font=("Segoe UI", 11),
+    font=("Segoe UI", 9),
     justify=CENTER
 )
-desc1.pack(pady=20)
+desc1.pack(pady=8)
 
 desc2 = tk.Label(
     content2,
-    text="Automated attendance marking using\nadvanced face recognition technology.\nReal-time processing and accuracy.",
+    text="Automated attendance marking\nusing face recognition.\nReal-time processing.",
     bg=BG_CARD,
     fg=FG_SECONDARY,
-    font=("Segoe UI", 11),
+    font=("Segoe UI", 9),
     justify=CENTER
 )
-desc2.pack(pady=20)
+desc2.pack(pady=8)
 
 desc3 = tk.Label(
     content3,
-    text="Comprehensive attendance reports\nand analytics for better insights.\nTrack student participation trends.",
+    text="Comprehensive attendance\nreports and analytics.\nTrack participation trends.",
     bg=BG_CARD,
     fg=FG_SECONDARY,
-    font=("Segoe UI", 11),
+    font=("Segoe UI", 9),
     justify=CENTER
 )
-desc3.pack(pady=20)
+desc3.pack(pady=8)
+
+desc4 = tk.Label(
+    content4,
+    text="Access historical attendance\nrecords by date with\ncheckpoint details.",
+    bg=BG_CARD,
+    fg=FG_SECONDARY,
+    font=("Segoe UI", 9),
+    justify=CENTER
+)
+desc4.pack(pady=8)
 
 # Background gradient already created above
 
@@ -385,7 +434,8 @@ def TakeImageUI():
 
     # Registration form card
     form_card = tk.Frame(main_frame, bg=BG_CARD, relief=FLAT, bd=0)
-    form_card.pack(pady=20, padx=20, fill=BOTH, expand=True)
+    # reduced outer padding so the form fits better on smaller screens
+    form_card.pack(pady=10, padx=10, fill=BOTH, expand=True)
 
     # Form title
     form_title = tk.Label(
@@ -399,11 +449,12 @@ def TakeImageUI():
 
     # Form fields container
     fields_frame = tk.Frame(form_card, bg=BG_CARD)
-    fields_frame.pack(pady=20)
+    # reduced inner spacing for a more compact form
+    fields_frame.pack(pady=10)
 
     # Enrollment field
     enrollment_frame = tk.Frame(fields_frame, bg=BG_CARD)
-    enrollment_frame.pack(pady=15, padx=40, fill=X)
+    enrollment_frame.pack(pady=8, padx=20, fill=X)
 
     lbl1 = tk.Label(
         enrollment_frame,
@@ -431,7 +482,7 @@ def TakeImageUI():
 
     # Name field
     name_frame = tk.Frame(fields_frame, bg=BG_CARD)
-    name_frame.pack(pady=15, padx=40, fill=X)
+    name_frame.pack(pady=8, padx=20, fill=X)
 
     lbl2 = tk.Label(
         name_frame,
@@ -520,21 +571,6 @@ def TakeImageUI():
     style_button(trainImg, bg=BTN_PRIMARY, hover_bg=BTN_PRIMARY_HOVER)
     trainImg.pack(side=LEFT, padx=10)
 
-    # Add Mark Attendance button
-    def mark_attendance():
-        automaticAttedance.subjectChoose(text_to_speech)
-
-    markAttendBtn = tk.Button(
-        button_frame,
-        text="✅ Mark Attendance",
-        command=mark_attendance,
-        font=("Segoe UI", 14, "bold"),
-        height=6,
-        width=16,
-    )
-    style_button(markAttendBtn, bg=BTN_WARNING, hover_bg=BTN_WARNING_HOVER)
-    markAttendBtn.pack(side=LEFT, padx=10)
-
     # Instructions
     instructions = tk.Label(
         form_card,
@@ -558,7 +594,239 @@ def register_student():
 def automatic_attedance():
     try:
         animate_button_click(btn_attend, BTN_PRIMARY, BTN_PRIMARY_HOVER)
-        automaticAttedance.subjectChoose(text_to_speech)
+        # New behavior: three scan instances with gaps.
+        # A student is marked present (checkpoint ticked) only if
+        # they are recognized in at least 2 out of 3 instances.
+        try:
+            # Ensure recognizer API is available
+            if not hasattr(cv2, "face") or not hasattr(cv2.face, "LBPHFaceRecognizer_create"):
+                messagebox.showerror(
+                    "Recognizer Missing",
+                    "Face recognizer (LBPH) not available. Install opencv-contrib-python to enable ID-based attendance."
+                )
+                return
+
+            recognizer = cv2.face.LBPHFaceRecognizer_create()
+            if os.path.exists(trainimagelabel_path):
+                try:
+                    recognizer.read(trainimagelabel_path)
+                except Exception:
+                    messagebox.showerror("Model Error", "Failed to load trained model. Please retrain.")
+                    return
+            else:
+                messagebox.showerror("Model Missing", "No trained model found. Please train first.")
+                return
+
+            # Load Haarcascade and student mapping
+            face_cascade = cv2.CascadeClassifier(haarcasecade_path)
+            if face_cascade.empty():
+                messagebox.showerror("Model Error", "Failed to load face cascade for detection.")
+                return
+
+            try:
+                df_students = pd.read_csv(studentdetail_path, header=None, names=["Enrollment", "Name"], dtype=str)
+                df_students["Enrollment"] = df_students["Enrollment"].astype(str).str.replace(r"\D+", "", regex=True)
+                df_students["Enrollment"] = pd.to_numeric(df_students["Enrollment"], errors="coerce")
+                df_students = df_students.dropna(subset=["Enrollment"])
+                df_students["Enrollment"] = df_students["Enrollment"].astype(int)
+                df_students = df_students.dropna(subset=["Name"]).drop_duplicates(subset=["Enrollment"], keep="last")
+                id_to_name = dict(zip(df_students["Enrollment"].astype(int), df_students["Name"]))
+            except Exception:
+                id_to_name = {}
+
+            # Open camera
+            cam = None
+            for src, api in [(0, cv2.CAP_DSHOW), (0, None), (1, cv2.CAP_DSHOW), (1, None)]:
+                tmp = cv2.VideoCapture(src, api) if api is not None else cv2.VideoCapture(src)
+                if tmp.isOpened():
+                    cam = tmp
+                    break
+            if cam is None or not cam.isOpened():
+                messagebox.showerror("Camera Error", "Unable to access camera. Please connect a camera.")
+                return
+
+            window_name = "Mark Attendance - Recognizing (3-instance mode, ESC to stop)"
+            total_instances = 3
+            scan_duration = 5   # seconds per scan
+            gap_duration = 10   # seconds between scans
+            early_exit = False
+
+            # Track in how many instances each ID was seen
+            instance_counts = {}   # enrollment_id -> count of instances where detected
+
+            for instance in range(1, total_instances + 1):
+                instance_end = datetime.datetime.now() + datetime.timedelta(seconds=scan_duration)
+                recognized_in_this_instance = set()
+
+                while datetime.datetime.now() < instance_end:
+                    ret, frame = cam.read()
+                    if not ret or frame is None:
+                        continue
+
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=5)
+
+                    for (x, y, w, h) in faces:
+                        try:
+                            Id, conf = recognizer.predict(gray[y:y + h, x:x + w])
+                        except Exception:
+                            Id, conf = (None, 999)
+
+                        if conf < 45 and Id is not None:
+                            name = id_to_name.get(int(Id), "Unknown")
+                            label = f"{Id}-{name}"
+                            recognized_in_this_instance.add(int(Id))
+                            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                            cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
+                        else:
+                            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 25, 255), 2)
+                            cv2.putText(frame, "Unknown", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 25, 255), 2)
+
+                    # Overlay instance label
+                    cv2.putText(
+                        frame,
+                        f"INSTANCE {instance}/{total_instances}",
+                        (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1,
+                        (0, 255, 255),
+                        2,
+                        cv2.LINE_AA,
+                    )
+
+                    cv2.imshow(window_name, frame)
+                    key = cv2.waitKey(30) & 0xFF
+                    if key == 27:  # ESC
+                        early_exit = True
+                        break
+
+                # Update counts for this instance
+                for rid in recognized_in_this_instance:
+                    instance_counts[rid] = instance_counts.get(rid, 0) + 1
+
+                if early_exit:
+                    break
+
+                # Show gap countdown between instances
+                if instance < total_instances:
+                    for remaining in range(gap_duration, 0, -1):
+                        ret, frame = cam.read()
+                        if not ret or frame is None:
+                            frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+                        msg = f"Next scan in {remaining} seconds"
+                        cv2.putText(
+                            frame,
+                            msg,
+                            (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 255, 255),
+                            2,
+                            cv2.LINE_AA,
+                        )
+                        cv2.putText(
+                            frame,
+                            f"Upcoming: INSTANCE {instance + 1}/{total_instances}",
+                            (10, 70),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.8,
+                            (255, 255, 255),
+                            2,
+                            cv2.LINE_AA,
+                        )
+
+                        cv2.imshow(window_name, frame)
+                        key = cv2.waitKey(1000) & 0xFF  # 1 second per step
+                        if key == 27:  # ESC
+                            early_exit = True
+                            break
+
+                    if early_exit:
+                        break
+
+            cam.release()
+            cv2.destroyAllWindows()
+
+            if early_exit and not instance_counts:
+                messagebox.showinfo("Scanning Stopped", "Scanning stopped early by user (ESC). No attendance was marked.")
+                return
+
+            # Decide final attendance: IDs seen in at least 2 instances
+            MIN_INSTANCES = 2
+            final_present = {rid for rid, cnt in instance_counts.items() if cnt >= MIN_INSTANCES}
+
+            if not final_present:
+                if early_exit:
+                    messagebox.showinfo("No Attendance Marked", "Scanning stopped early and no student met the 2-of-3 rule.")
+                else:
+                    messagebox.showinfo("No Attendance Marked", "No student was recognized in at least 2 of 3 instances.")
+                return
+
+            # Mark attendance via checkpoint system for final_present IDs
+            try:
+                date = datetime.datetime.now().strftime("%Y-%m-%d")
+
+                # Build enrollment -> name mapping for present IDs
+                unique_recognized = {}
+                for rid in final_present:
+                    name = id_to_name.get(int(rid), "Unknown")
+                    unique_recognized[int(rid)] = name
+
+                marked_count = 0
+                for enrollment_id, student_name in unique_recognized.items():
+                    try:
+                        checkpoint_num = checkpoint_attendance.get_next_checkpoint(int(enrollment_id), date)
+                        if checkpoint_num is not None:
+                            checkpoint_attendance.add_student_checkpoint(
+                                int(enrollment_id),
+                                str(student_name),
+                                checkpoint_num,
+                                date
+                            )
+                            marked_count += 1
+                    except Exception as e:
+                        messagebox.showwarning(
+                            "Error Marking Attendance",
+                            f"Failed to mark attendance for {enrollment_id}-{student_name}: {str(e)}"
+                        )
+
+                # Optional: legacy report CSV with ticks for present students
+                if marked_count > 0:
+                    try:
+                        reports_dir = os.path.join("Attendance", "Reports")
+                        os.makedirs(reports_dir, exist_ok=True)
+                        ts = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+                        if isinstance(df_students, pd.DataFrame) and not df_students.empty:
+                            df_all = df_students[["Enrollment", "Name"]].drop_duplicates(subset=["Enrollment"]).copy()
+                            df_all["Enrollment"] = df_all["Enrollment"].astype(int)
+                            df_all[date] = ""
+                            present_ids = set(unique_recognized.keys())
+                            df_all.loc[df_all["Enrollment"].isin(present_ids), date] = 1
+                            filename = os.path.join(reports_dir, f"Reports_{ts}.csv")
+                            df_all.to_csv(filename, index=False)
+                    except Exception:
+                        pass
+
+                messagebox.showinfo(
+                    "Attendance Marked",
+                    f"Marked attendance for {marked_count} student(s).\n"
+                    f"Rule: present if recognized in at least 2 of 3 instances."
+                )
+            except Exception as ex_save:
+                messagebox.showerror("Save Error", f"Failed to save attendance: {ex_save}")
+
+        except Exception as ex:
+            messagebox.showerror("Scanning Error", f"Error during scanning: {ex}")
+            try:
+                cam.release()
+            except Exception:
+                pass
+            try:
+                cv2.destroyAllWindows()
+            except Exception:
+                pass
     except Exception as e:
         messagebox.showerror("Attendance Error", f"Failed to mark attendance: {e}")
 
@@ -569,80 +837,54 @@ def view_attendance():
     except Exception as e:
         messagebox.showerror("View Reports Error", f"Failed to view reports: {e}")
 
-# Modern action buttons
+# Modern action buttons - REDUCED SIZE
 btn_register = tk.Button(
     content1,
     text="🚀 Start Registration",
     command=register_student,
-    font=("Segoe UI", 12, "bold"),
-    height=2,
-    width=20,
+    font=("Segoe UI", 10, "bold"),
+    height=1,
+    width=18,
 )
 style_button(btn_register, bg=BTN_SUCCESS, hover_bg=BTN_SUCCESS_HOVER)
-btn_register.pack(pady=10)
+btn_register.pack(pady=5)
 
 btn_attend = tk.Button(
     content2,
     text="📊 Mark Attendance",
     command=automatic_attedance,
-    font=("Segoe UI", 12, "bold"),
-    height=2,
-    width=20,
+    font=("Segoe UI", 10, "bold"),
+    height=1,
+    width=18,
 )
 style_button(btn_attend, bg=BTN_PRIMARY, hover_bg=BTN_PRIMARY_HOVER)
-btn_attend.pack(pady=10)
+btn_attend.pack(pady=5)
 
 btn_view = tk.Button(
     content3,
     text="📈 View Reports",
     command=view_attendance,
-    font=("Segoe UI", 12, "bold"),
-    height=2,
-    width=20,
+    font=("Segoe UI", 10, "bold"),
+    height=1,
+    width=18,
 )
 style_button(btn_view, bg=BTN_WARNING, hover_bg=BTN_WARNING_HOVER)
-btn_view.pack(pady=10)
+btn_view.pack(pady=5)
 
-# Redundant but reliable action bar to ensure buttons are always visible
-action_bar = tk.Frame(window, bg=BG_PANEL)
-action_bar.pack(fill=X, padx=40, pady=10)
-
-btn_register_top = tk.Button(
-    action_bar,
-    text="👤 Register",
-    command=register_student,
-    font=("Segoe UI", 12, "bold"),
-    height=2,
-    width=16,
-)
-style_button(btn_register_top, bg=BTN_SUCCESS, hover_bg=BTN_SUCCESS_HOVER)
-btn_register_top.pack(side=LEFT, padx=10, pady=10)
-
-btn_attend_top = tk.Button(
-    action_bar,
-    text="📊 Attendance",
-    command=automatic_attedance,
-    font=("Segoe UI", 12, "bold"),
-    height=2,
-    width=16,
-)
-style_button(btn_attend_top, bg=BTN_PRIMARY, hover_bg=BTN_PRIMARY_HOVER)
-btn_attend_top.pack(side=LEFT, padx=10, pady=10)
-
-btn_view_top = tk.Button(
-    action_bar,
-    text="📈 Reports",
+btn_past2 = tk.Button(
+    content4,
+    text="📅 Attendance Details",
     command=view_attendance,
-    font=("Segoe UI", 12, "bold"),
-    height=2,
-    width=16,
+    font=("Segoe UI", 10, "bold"),
+    height=1,
+    width=18,
 )
-style_button(btn_view_top, bg=BTN_WARNING, hover_bg=BTN_WARNING_HOVER)
-btn_view_top.pack(side=LEFT, padx=10, pady=10)
+style_button(btn_past2, bg=BTN_PRIMARY, hover_bg=BTN_PRIMARY_HOVER)
+btn_past2.pack(pady=5)
 
-# Bottom section with additional features
-bottom_frame = tk.Frame(window, bg=BG_GRADIENT_START, height=100)
-bottom_frame.pack(side=BOTTOM, fill=X, padx=40, pady=20)
+# Bottom section with additional features (INSIDE SCROLLABLE CONTENT)
+bottom_frame = tk.Frame(content_frame, bg=BG_GRADIENT_START, height=100)
+bottom_frame.pack(side=BOTTOM, fill=X, padx=0, pady=20)
 
 # Statistics or info panel
 info_frame = tk.Frame(bottom_frame, bg=BG_PANEL, relief=FLAT, bd=0)
@@ -657,7 +899,7 @@ info_label = tk.Label(
 )
 info_label.pack(pady=15)
 
-# Exit button
+# Exit button frame
 exit_frame = tk.Frame(bottom_frame, bg=BG_GRADIENT_START)
 exit_frame.pack(pady=10)
 

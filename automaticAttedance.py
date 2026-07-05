@@ -10,6 +10,8 @@ import datetime
 import time
 import tkinter.ttk as tkk
 import tkinter.font as font
+import checkpoint_attendance  # NEW: Import checkpoint system
+# from improved_face_recognition import ImprovedFaceRecognizer  # NEW: Improved face recognition
 
 haarcasecade_path = "haarcascade_frontalface_default.xml"
 trainimagelabel_path = (
@@ -24,34 +26,17 @@ attendance_path = "Attendance"
 def subjectChoose(text_to_speech):
     def FillAttendance():
         sub = tx.get()
-        now = time.time()
-        future = now + 20
-        print(now)
-        print(future)
         if sub == "":
             t = "Please enter the subject name!!!"
             text_to_speech(t)
         else:
             try:
-                # Validate recognizer availability and load model
-                if not hasattr(cv2, "face") or not hasattr(cv2.face, "LBPHFaceRecognizer_create"):
-                    text_to_speech("Face recognizer not available. Please install opencv-contrib-python.")
-                    return
-                recognizer = cv2.face.LBPHFaceRecognizer_create()
-                if not os.path.exists(trainimagelabel_path):
-                    text_to_speech("Model not found, please train the model first.")
-                    return
-                try:
-                    recognizer.read(trainimagelabel_path)
-                except Exception:
-                    text_to_speech("Failed to load the model. Please retrain.")
-                    return
-                facecasCade = cv2.CascadeClassifier(haarcasecade_path)
-                if facecasCade.empty():
+                # Load Haarcascade face detector
+                face_cascade = cv2.CascadeClassifier(haarcasecade_path)
+                if face_cascade.empty():
                     text_to_speech("Failed to load face cascade.")
                     return
-                df_raw = pd.read_csv(studentdetail_path, header=None, names=["Enrollment", "Name"], dtype={"Enrollment": int, "Name": str})
-                df = df_raw.drop_duplicates(subset=["Enrollment"], keep="last")
+
                 # Open camera (Windows-friendly with fallbacks)
                 cam = None
                 for src, api in [(0, cv2.CAP_DSHOW), (0, None), (1, cv2.CAP_DSHOW), (1, None)]:
@@ -63,162 +48,113 @@ def subjectChoose(text_to_speech):
                     text_to_speech("Unable to access camera. Please connect a camera and try again.")
                     return
                 try:
-                    Notifica.configure(text="Camera started. Press ESC to stop.")
+                    Notifica.configure(text="Camera started. 3 scan instances will run.")
                 except Exception:
                     pass
-                font = cv2.FONT_HERSHEY_SIMPLEX
-                col_names = ["Enrollment", "Name"]
-                attendance = pd.DataFrame(columns=col_names)
-                while True:
-                    ret, im = cam.read()
-                    if not ret or im is None:
-                        continue
-                    gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-                    faces = facecasCade.detectMultiScale(gray, 1.2, 5)
-                    for (x, y, w, h) in faces:
-                        Id, conf = recognizer.predict(gray[y : y + h, x : x + w])
-                        if conf < 70:
-                            name_values = df.loc[df["Enrollment"] == Id]["Name"].values
-                            display_name = str(name_values[0]) if len(name_values) > 0 else "Unknown"
-                            tt = f"{Id}-{display_name}"
-                            attendance.loc[len(attendance)] = [Id, display_name]
-                            cv2.rectangle(im, (x, y), (x + w, y + h), (0, 260, 0), 4)
-                            cv2.putText(im, str(tt), (x + h, y), font, 1, (255, 255, 0,), 4)
-                        else:
-                            Id = "Unknown"
-                            tt = str(Id)
-                            cv2.rectangle(im, (x, y), (x + w, y + h), (0, 25, 255), 7)
-                            cv2.putText(im, str(tt), (x + h, y), font, 1, (0, 25, 255), 4)
-                    if time.time() > future:
+                # Run three scan instances with gaps, without marking/saving attendance
+                total_instances = 3
+                scan_duration = 5        # seconds per scan instance
+                gap_duration = 10        # seconds gap between scans
+
+                early_exit = False
+
+                for instance in range(1, total_instances + 1):
+                    instance_end = time.time() + scan_duration
+                    try:
+                        Notifica.configure(text=f"Scanning INSTANCE {instance}/{total_instances}...")
+                    except Exception:
+                        pass
+
+                    while time.time() < instance_end:
+                        ret, frame = cam.read()
+                        if not ret or frame is None:
+                            continue
+
+                        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5)
+
+                        # Draw rectangles around detected faces
+                        for (x, y, w, h) in faces:
+                            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+                        # Overlay current instance label
+                        cv2.putText(
+                            frame,
+                            f"INSTANCE {instance}/{total_instances}",
+                            (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 255, 255),
+                            2,
+                            cv2.LINE_AA,
+                        )
+
+                        cv2.imshow("Attendance Scanning", frame)
+                        key = cv2.waitKey(30) & 0xFF
+                        if key == 27:  # ESC
+                            early_exit = True
+                            break
+
+                    if early_exit:
                         break
-                    cv2.imshow("Filling Attendance...", im)
-                    key = cv2.waitKey(30) & 0xFF
-                    if key == 27:
-                        break
-                ts = time.time()
-                date = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
-                timeStamp = datetime.datetime.fromtimestamp(ts).strftime("%H:%M:%S")
-                attendance[date] = 1
-                Hour, Minute, Second = timeStamp.split(":")
-                path = os.path.join(attendance_path, sub)
-                if not os.path.exists(path):
-                    os.makedirs(path)
-                fileName = (
-                    f"{path}/"
-                    + sub
-                    + "_"
-                    + date
-                    + "_"
-                    + Hour
-                    + "-"
-                    + Minute
-                    + "-"
-                    + Second
-                    + ".csv"
-                )
-                attendance = attendance.drop_duplicates(["Enrollment"], keep="first")
-                print(attendance)
-                attendance.to_csv(fileName, index=False)
-                m = f"Attendance Filled Successfully for {sub}"
-                text_to_speech(m)
+
+                    # If not the last instance, show gap countdown
+                    if instance < total_instances:
+                        gap_start_text = f"Next scan in {gap_duration} seconds"
+                        try:
+                            Notifica.configure(text=gap_start_text)
+                        except Exception:
+                            pass
+
+                        for remaining in range(gap_duration, 0, -1):
+                            ret, frame = cam.read()
+                            if not ret or frame is None:
+                                # Create a blank frame if camera read fails
+                                frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+                            msg = f"Next scan in {remaining} seconds"
+                            cv2.putText(
+                                frame,
+                                msg,
+                                (10, 30),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                1,
+                                (0, 255, 255),
+                                2,
+                                cv2.LINE_AA,
+                            )
+                            cv2.putText(
+                                frame,
+                                f"Upcoming: INSTANCE {instance + 1}/{total_instances}",
+                                (10, 70),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                1,
+                                (0, 255, 255),
+                                2,
+                                cv2.LINE_AA,
+                            )
+
+                            cv2.imshow("Attendance Scanning", frame)
+                            key = cv2.waitKey(1000) & 0xFF  # 1 second per loop
+                            if key == 27:  # ESC
+                                early_exit = True
+                                break
+
+                        if early_exit:
+                            break
+
                 cam.release()
                 cv2.destroyAllWindows()
 
-                # Modern attendance display
-                import csv
-                import tkinter
-                from tkinter import ttk
-
-                root = tkinter.Tk()
-                root.title(f"✅ Attendance Captured - {sub}")
-                root.geometry("800x500")
-                root.configure(background="#0f0f23")
-                
                 try:
-                    root.iconbitmap("AMS.ico")
-                except:
+                    if early_exit:
+                        Notifica.configure(text="Scanning stopped early by user (ESC).")
+                    else:
+                        Notifica.configure(text="Scanning finished. 3 instances completed.")
+                except Exception:
                     pass
-
-                # Header
-                header_frame = tkinter.Frame(root, bg="#1e3a5f", height=60)
-                header_frame.pack(fill=tkinter.X, padx=10, pady=10)
-                header_frame.pack_propagate(False)
-
-                header_title = tkinter.Label(
-                    header_frame,
-                    text=f"✅ {sub} - Attendance Successfully Captured",
-                    bg="#1e3a5f",
-                    fg="#00d4ff",
-                    font=("Segoe UI", 16, "bold")
-                )
-                header_title.pack(pady=15)
-
-                # Scrollable content
-                main_frame = tkinter.Frame(root, bg="#2c5282")
-                main_frame.pack(fill=tkinter.BOTH, expand=True, padx=10, pady=10)
-
-                canvas = tkinter.Canvas(main_frame, bg="#2c5282", highlightthickness=0)
-                scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
-                scrollable_frame = tkinter.Frame(canvas, bg="#2c5282")
-
-                scrollable_frame.bind(
-                    "<Configure>",
-                    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-                )
-
-                canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-                canvas.configure(yscrollcommand=scrollbar.set)
-
-                cs = fileName
-                print(cs)
-                with open(cs, newline="") as file:
-                    reader = csv.reader(file)
-                    data = list(reader)
-                    
-                    if data:
-                        # Header row
-                        header_row = tkinter.Frame(scrollable_frame, bg="#1e3a5f", relief=tkinter.FLAT, bd=2)
-                        header_row.pack(fill=tkinter.X, padx=5, pady=5)
-                        
-                        for col_idx, header in enumerate(data[0]):
-                            header_label = tkinter.Label(
-                                header_row,
-                                text=header,
-                                bg="#1e3a5f",
-                                fg="#ffd700",
-                                font=("Segoe UI", 12, "bold"),
-                                width=15,
-                                height=2,
-                                relief=tkinter.FLAT
-                            )
-                            header_label.grid(row=0, column=col_idx, padx=2, pady=2, sticky="ew")
-                        
-                        # Data rows
-                        for row_idx, row_data in enumerate(data[1:], 1):
-                            row_bg = "#2c5282" if row_idx % 2 == 0 else "#16213e"
-                            data_row = tkinter.Frame(scrollable_frame, bg=row_bg, relief=tkinter.FLAT, bd=1)
-                            data_row.pack(fill=tkinter.X, padx=5, pady=2)
-                            
-                            for col_idx, cell_data in enumerate(row_data):
-                                cell_label = tkinter.Label(
-                                    data_row,
-                                    text=cell_data,
-                                    bg=row_bg,
-                                    fg="#ffffff",
-                                    font=("Segoe UI", 11),
-                                    width=15,
-                                    height=1,
-                                    relief=tkinter.FLAT
-                                )
-                                cell_label.grid(row=0, column=col_idx, padx=2, pady=2, sticky="ew")
-
-                canvas.pack(side="left", fill="both", expand=True)
-                scrollbar.pack(side="right", fill="y")
-
-                root.mainloop()
-                print(attendance)
             except:
-                f = "No Face found for attendance"
+                f = "Error during scanning"
                 text_to_speech(f)
                 cv2.destroyAllWindows()
 
@@ -322,7 +258,7 @@ def subjectChoose(text_to_speech):
     # Instructions
     instruction_label = tk.Label(
         content_card,
-        text="Enter the subject name to start automated face recognition attendance",
+        text="Attendence is turned on",
         bg=BG_CARD,
         fg=FG_SECONDARY,
         font=("Segoe UI", 14),
@@ -426,7 +362,7 @@ def subjectChoose(text_to_speech):
 
     instructions_label = tk.Label(
         instructions_frame,
-        text="📋 Instructions:\n• Make sure your camera is connected and working\n• Students should look directly at the camera\n• Attendance will be captured for 20 seconds\n• Press ESC to stop early if needed",
+        text="📋 Instructions:\n• Make sure your camera is connected and working\n• Students should look directly at the camera\n• The system will run 3 scan instances\n• Each instance scans for ~5 seconds\n• There is a 10‑second gap between scans\n• No attendance will be saved in this mode\n• Press ESC to stop early if needed",
         bg=BG_PANEL,
         fg=FG_SECONDARY,
         font=("Segoe UI", 10),
